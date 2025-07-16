@@ -1,0 +1,175 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox          |
+|  \\    /   O peration     | Version:  v2112 (or adapt to your version)     |
+|   \\  /    A nd           | Web:      www.OpenFOAM.com                     |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    object      blockMeshDict;
+}
+
+scale 1;
+
+// === DOMAIN PARAMETERS ===
+inletSlip       0.4;       // Slip portion of inlet
+inletNoSlip     0.8;       // No-slip + cavity inlet
+inletWidth      #calc "$inletSlip + $inletNoSlip";
+
+cavityWidth     1.0;
+cavityDepth     1.0;
+outletWidth     2.5;
+channelHeight   0.5;
+
+domainLengthX   #eval "$inletWidth + $outletWidth + $cavityWidth";
+domainHeightY   #eval "$channelHeight";
+lengthZ         0.01;
+
+
+// Mesh resolution parameters
+blocksInlet 80;      // cells in y-direction for inlet
+blocksInletY 128;
+blocksTop   80;      // cells in y-direction for top block
+blocksTopY   64;
+blocksCav1  80;      // cells in y-direction for 1st cavity block
+blocksCav1Y 160;
+blocksCav2  80;      // cells in y-direction for 2nd cavity block
+blocksCav2Y 80;
+blocksOutlet 80;     // cells in y-direction for outlet
+blocksOutletY 400;
+blocksZ     1;       // always 1 in 2D case
+
+
+// Grading Parameters
+//gradWallRefined (2.5 0.4); // higher grading factor for refined mesh on cavity2 side walls
+//gradWallRefined ((0.5 0.25 2.5) (0.5 0.25 0.4)); // higher grading factor for refined mesh on cavity2 side walls
+gradWallRefined ((0.25 0.4 8) (0.5 0.3 1) (0.25 0.4 0.125)); // higher grading factor for refined mesh on cavity2 side walls
+gradInRefined ((0.70 0.55 1) (0.30 0.45 0.125)); // higher grading factor for refined mesh on cavity2 side walls
+gradInletRefined ((0.75 0.6 1) (0.25 0.4 0.125)); // higher grading factor for refined mesh on cavity2 side walls
+gradOutletRefined ((0.1 0.2 8) (0.9 0.8 1)); // higher grading factor for refined mesh on cavity2 side walls
+//gradInRefined  (1 0.25);
+gradOutRefined (1 0.25);
+
+
+
+vertices
+(
+    // Bottom level (z = 0)
+    (0                         0                          0)   // 0
+    (0                         -$channelHeight            0)   // 1
+    ($inletNoSlip              -$channelHeight            0)   // 2
+    ($inletWidth               -$channelHeight            0)   // 3
+    ($inletWidth               #eval "-($channelHeight + $cavityDepth)" 0)   // 4
+    (#eval "$inletWidth + $cavityWidth" #eval "-($channelHeight + $cavityDepth)" 0)   // 5
+    (#eval "$inletWidth + $cavityWidth" -$channelHeight   0)   // 6
+    (#eval "$inletWidth + $cavityWidth + $outletWidth" -$channelHeight 0)   // 7
+    (#eval "$inletWidth + $cavityWidth + $outletWidth" 0 0)    // 8
+    (#eval "$inletWidth + $cavityWidth" 0 0)                   // 9
+    ($inletWidth               0                          0)   // 10
+    ($inletNoSlip              0                          0)   // 11
+
+
+
+    (0                         0                          1)   // 12
+    (0                         -$channelHeight            1)   // 13
+    ($inletNoSlip              -$channelHeight            1)   // 14
+    ($inletWidth               -$channelHeight            1)   // 15
+    ($inletWidth               #eval "-($channelHeight + $cavityDepth)" 1)   // 16
+    (#eval "$inletWidth + $cavityWidth" #eval "-($channelHeight + $cavityDepth)" 1)   // 17
+    (#eval "$inletWidth + $cavityWidth" -$channelHeight   1)   // 18
+    (#eval "$inletWidth + $cavityWidth + $outletWidth" -$channelHeight 1)   // 19
+    (#eval "$inletWidth + $cavityWidth + $outletWidth" 0 1)    // 20
+    (#calc "$inletWidth + $cavityWidth" 0 1)                   // 21
+    ($inletWidth               0                          1)   // 22
+    ($inletNoSlip              0                          1)   // 23
+
+
+);
+
+blocks
+(   hex (0 1 2 11 12 13 14 23) ($blocksInlet $blocksInletY $blocksZ) simpleGrading ($gradInRefined 1  1) // inlet block
+    hex (11 2 3 10 23 14 15 22) ($blocksTop $blocksTopY $blocksZ) simpleGrading ($gradInRefined $gradInletRefined 1) // top block
+    hex (10 3 6 9 22 15 18 21) ($blocksCav1 $blocksCav1Y $blocksZ) simpleGrading ($gradInRefined $gradWallRefined 1) // cavity top block
+    hex (3 4 5 6 15 16 17 18) ($blocksCav2 $blocksCav2Y $blocksZ)  simpleGrading ($gradWallRefined $gradWallRefined 1)//cavity block
+    hex (9 6 7 8 21 18 19 20) ($blocksOutlet $blocksOutletY $blocksZ) simpleGrading ($gradInRefined  $gradOutletRefined 1)// // outlet block
+);
+
+
+edges();
+
+boundary
+
+(
+    inlet
+    {
+        type patch;
+        faces
+        (
+            (0 1 13 12)
+        );
+    }
+
+    outlet
+    {
+        type patch;
+        faces
+        (
+            (8 7 19 20)
+        );
+    }
+
+    slip
+    {
+        type symmetry;
+        faces
+        (
+            (1 2 14 13)
+            (0 11 23 12)
+            (11 10 22 23)
+            (10 9 21 22)
+            (9 8 20 21)
+            //(0 8 20 12)
+        );
+    }
+
+
+    walls
+    {
+        type wall;
+        faces
+        (
+            (2 3 15 14)
+            (3 4 16 15)
+            (4 5 17 16)
+            (5 6 18 17) 
+            (6 7 18 19)
+        );
+    }
+
+    frontAndBack
+    {
+        type empty;
+        faces
+        (
+            (0 1 2 11)
+            (2 3 10 11)
+            (3 6 9 10)
+            (4 5 6 3)
+            (6 7 8 9)
+            (12 13 14 23)
+            (14 15 22 23)
+            (15 18 21 22)
+            (16 17 18 15)
+            (18 19 20 21)
+        );
+    }
+);
+
+mergePatchPairs
+(
+);
