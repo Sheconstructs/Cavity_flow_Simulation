@@ -120,6 +120,20 @@ boundary
         );
     }
 
+
+    inletvalve
+    {
+
+	type patch;
+	faces
+	(
+	    (25 26 3 10)
+
+	);
+
+     }
+	
+
     outlet
     {
         type patch;
@@ -166,7 +180,6 @@ boundary
         (
             (0 1 2 11)
 	    (2 26 25 11)
-	    (26 3 10 25)
             (3 6 9 10)
             (4 5 6 3)
             (6 7 8 9)
@@ -179,7 +192,6 @@ boundary
         );
     }
 );
-
 mergePatchPairs
 (
 );
