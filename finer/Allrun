@@ -1,0 +1,32 @@
+#!/bin/bash
+cd "${0%/*}" || exit                                # Run from this directory
+. "${WM_PROJECT_DIR:?}"/bin/tools/RunFunctions      # Tutorial run functions
+#------------------------------------------------------------------------------
+
+# create background mesh
+runApplication blockMesh
+
+# copy IC
+cp -r 0.org 0
+touch post.foam
+
+# decompose
+runApplication decomposePar
+
+# create
+runParallel checkMesh -allGeometry -allTopology
+
+# renumber
+runParallel renumberMesh -overwrite
+
+# execute flow solver
+runParallel "$(getApplication)"
+
+# compute cell centers and volumes for post-processing if not yet done
+if [ ! -f "log.postProcess.writeCellCentres" ]; then
+  runParallel postProcess -func "writeCellCentres" -constant -time none
+  mv log.postProcess log.postProcess.writeCellCentres
+  runParallel postProcess -func "writeCellVolumes" -constant -time none
+  mv log.postProcess log.postProcess.writeCellVolumes
+fi
+
